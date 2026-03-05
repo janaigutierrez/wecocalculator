@@ -54,6 +54,7 @@ export function calculateLine({ product, productKey, format, formatKey, quantity
             productKey,
             formatKey,
             productName: product.name,
+            shortName: product.shortName,
             formatLabel: format.label,
             quantity,
             totalUnits: format.units * quantity,
@@ -66,12 +67,13 @@ export function calculateLine({ product, productKey, format, formatKey, quantity
 
     if (format.type === "pallet") {
         if (!palletHeightCm || palletHeightCm <= 0) return null;
-        const { weight, volume, breakdown } = calcPalletData(product, format, units, palletHeightCm);
+        const { weight, volume, breakdown } = calcPalletData(product, format, quantity, palletHeightCm);
         return {
             id: Date.now(),
             productKey,
             formatKey,
             productName: product.name,
+            shortName: product.shortName,
             formatLabel: format.label,
             quantity: 1,
             totalUnits: quantity,
@@ -86,11 +88,59 @@ export function calculateLine({ product, productKey, format, formatKey, quantity
     }
 }
 
+export function calculatePalletLine({ product, productKey, palletBase, palletBaseKey, unitCount, palletHeightCm }) {
+    const weight = roundTo(unitCount * product.unitWeight + palletBase.weight, 3);
+    const volume = roundTo(calcPalletVolume(product.barLengthCm, palletBase.dims.width, palletHeightCm), 5);
+    return {
+        id: Date.now(),
+        type: 'pallet',
+        productKey,
+        productName: product.name,
+        shortName: product.shortName,
+        palletBaseKey,
+        palletBaseLabel: palletBase.label,
+        totalUnits: unitCount,
+        totalWeight: weight,
+        totalVolume: volume,
+        palletHeightCm,
+    };
+}
+
+export function calculateBoxLine({ boxSizeKey, boxSize, weight, observations }) {
+    const { l, w, h } = boxSize.dims;
+    const volume = roundTo((l / 100) * (w / 100) * (h / 100), 5);
+    return {
+        id: Date.now(),
+        type: 'box',
+        boxSizeKey,
+        label: `Caixa ${boxSize.label}`,
+        dims: boxSize.dims,
+        totalWeight: roundTo(weight, 3),
+        totalVolume: volume,
+        observations: observations || '',
+    };
+}
+
+export function calculateFreeLine({ label, dims, weight, quantity }) {
+    const volume = roundTo((dims.l / 100) * (dims.w / 100) * (dims.h / 100), 5);
+    return {
+        id: Date.now(),
+        type: 'free',
+        label,
+        dims,
+        weight: roundTo(weight, 3),
+        volume,
+        quantity,
+        totalWeight: roundTo(weight * quantity, 3),
+        totalVolume: roundTo(volume * quantity, 5),
+    };
+}
+
 export function calculateTotals(cart) {
     return {
-        totalWeight: roundTo(cart.reduce((sum, l) => sum + l.totalWeight, 0), 3),
-        totalVolume: roundTo(cart.reduce((sum, l) => sum + l.totalVolume, 0), 5),
-        totalUnits: cart.reduce((sum, l) => sum + (l.totalUnits || 0), 0),
+        totalWeight: roundTo(cart.reduce((sum, l) => sum + l.totalWeight * (l.qty || 1), 0), 3),
+        totalVolume: roundTo(cart.reduce((sum, l) => sum + l.totalVolume * (l.qty || 1), 0), 5),
+        totalUnits: cart.reduce((sum, l) => sum + (l.totalUnits || 0) * (l.qty || 1), 0),
         lineCount: cart.length,
     };
 }
