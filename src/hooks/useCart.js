@@ -1,49 +1,34 @@
 // ============================================================
-// useCart.js — Estat global del cart amb React hooks
+// useCart.js — Operacions sobre el cart de la sessió activa
+// La persistència és responsabilitat de useSessions
 // ============================================================
 
-import { useState } from "react";
 import { calculateTotals } from "../utils/calculator";
-import { saveCart, loadCart } from "../utils/storage";
 
-export function useCart() {
-    const [cart, setCart] = useState(() => loadCart());
-
+export function useCart(cart, updateCart) {
     function addLine(line) {
-        const newCart = [...cart, { ...line, id: Date.now(), qty: 1 }];
-        setCart(newCart);
-        saveCart(newCart);
+        updateCart([...cart, { ...line, id: Date.now(), qty: 1 }]);
         return { success: true };
     }
 
     function removeLine(id) {
-        const newCart = cart.filter((l) => l.id !== id);
-        setCart(newCart);
-        saveCart(newCart);
+        updateCart(cart.filter((l) => l.id !== id));
     }
 
     // delta: +1 o -1. Mínim qty = 1
     function updateLineQty(id, delta) {
-        const newCart = cart.map((l) =>
-            l.id === id ? { ...l, qty: Math.max(1, (l.qty || 1) + delta) } : l
+        updateCart(
+            cart.map((l) =>
+                l.id === id ? { ...l, qty: Math.max(1, (l.qty || 1) + delta) } : l
+            )
         );
-        setCart(newCart);
-        saveCart(newCart);
     }
 
     function clearCart() {
-        setCart([]);
-        saveCart([]);
+        updateCart([]);
     }
 
     const totals = calculateTotals(cart);
 
-    return {
-        cart,
-        totals,
-        addLine,
-        removeLine,
-        updateLineQty,
-        clearCart,
-    };
+    return { cart, totals, addLine, removeLine, updateLineQty, clearCart };
 }

@@ -4,6 +4,7 @@
 
 import { useState } from "react";
 import { useCart } from "./hooks/useCart";
+import { useSessions } from "./hooks/useSessions";
 import { products, PALLET_BASES } from "./data/products";
 import { loadLastSelection, saveLastSelection } from "./utils/storage";
 import { calculateLine, calculatePalletLine, formatWeight, formatVolume } from "./utils/calculator";
@@ -14,6 +15,7 @@ import { BoxSelector } from "./components/BoxSelector";
 import { FreeEntryForm } from "./components/FreeEntryForm";
 import { CartLine } from "./components/CartLine";
 import { CartTotals } from "./components/CartTotals";
+import { SessionTabs } from "./components/SessionTabs";
 import { DeliveryModal } from "./components/DeliveryModal";
 
 const ENTRY_TYPES = [
@@ -23,7 +25,15 @@ const ENTRY_TYPES = [
 ];
 
 export default function App() {
-    const { cart, totals, addLine, removeLine, updateLineQty, clearCart } = useCart();
+    const {
+        sessions, activeId, activeSession,
+        createSession, switchSession, updateActiveCart, renameSession, deleteSession,
+    } = useSessions();
+
+    const { cart, totals, addLine, removeLine, updateLineQty, clearCart } = useCart(
+        activeSession?.cart ?? [],
+        updateActiveCart
+    );
 
     const lastSelection = loadLastSelection();
     const [entryType, setEntryType] = useState("barrera");
@@ -246,15 +256,19 @@ export default function App() {
                 </section>
 
                 {/* ===== PANEL DRET: Full de càrrega ===== */}
-                <section className="flex-1 overflow-y-auto p-5 flex flex-col gap-4">
+                <section className="flex-1 overflow-y-auto p-5 flex flex-col gap-3">
 
-                    <div className="flex items-center justify-between">
-                        <span className="text-xs font-mono uppercase tracking-widest text-neutral-500">Full de càrrega</span>
-                        <span className="text-xs font-mono bg-neutral-800 border border-neutral-700 text-neutral-500 px-3 py-1 rounded-full">
-                            {totals.lineCount} {totals.lineCount === 1 ? "línia" : "línies"}
-                        </span>
-                    </div>
+                    {/* Pestanyes de sessió */}
+                    <SessionTabs
+                        sessions={sessions}
+                        activeId={activeId}
+                        onSwitch={switchSession}
+                        onCreate={createSession}
+                        onRename={renameSession}
+                        onDelete={deleteSession}
+                    />
 
+                    {/* Línies del cart */}
                     {cart.length === 0 ? (
                         <div className="flex-1 flex flex-col items-center justify-center border border-dashed border-neutral-800 rounded-lg py-16 gap-2">
                             <span className="text-neutral-600 font-mono text-sm">Cap línia afegida</span>
@@ -270,6 +284,15 @@ export default function App() {
                                     onUpdateQty={(delta) => updateLineQty(line.id, delta)}
                                 />
                             ))}
+                        </div>
+                    )}
+
+                    {/* Separador visual ─── TOTALS ─── */}
+                    {cart.length > 0 && (
+                        <div className="flex items-center gap-3 pt-1">
+                            <div className="flex-1 border-t-2 border-neutral-800" />
+                            <span className="text-[10px] font-mono uppercase tracking-[3px] text-neutral-700">Totals</span>
+                            <div className="flex-1 border-t-2 border-neutral-800" />
                         </div>
                     )}
 
